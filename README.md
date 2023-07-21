@@ -1,0 +1,2 @@
+# Frogbot
+Simple Discord Bot
