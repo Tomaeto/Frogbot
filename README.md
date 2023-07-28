@@ -1,6 +1,8 @@
 # Frogbot
 Simple Discord Bot using Giphy API, API Ninjas, and Inspirobot API for various commands
 
+**Bot uses .ini file for API keys and filepaths, NOT included in repo for security purposes**
+
 Currently adding database functionality for admin tasks such as tracking user's rule infringements (such as banned messages)
 
 Commands:
