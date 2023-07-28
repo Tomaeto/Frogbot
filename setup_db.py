@@ -2,6 +2,7 @@ import sqlite3
 from sqlite3 import Error
 #Program for setting up database for Frogbot admin tasks
 #Contains tables for user info, banned messages, and banned term list
+#By Adrian Faircloth (Tomaeto)
 
 #Function for connecting to database file/creating if none exists
 def get_connection(db_file):
@@ -61,9 +62,9 @@ def main():
                                         FOREIGN KEY (user_id) REFERENCES members(id)
                                         );"""
     
-    #Statement for creating banned term list
+    #Statement for creating banned term list and adding uniqueness constraint
     sql_create_banlist_table = """ CREATE TABLE IF NOT EXISTS banned_terms (
-                                        term text PRIMARY KEY
+                                        term text PRIMARY KEY UNIQUE
                                         );"""
     
     #Getting database connection
