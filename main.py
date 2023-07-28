@@ -190,13 +190,35 @@ async def on_message(message):
        
     #Command for sending an embed with your account data (join date, creation date, user ID, and pfp)
     #Will be reworked to allow for sending embed with other user's data
-    if message.content == "!profile":
-        embed.title = message.author.display_name
-        embed.description = message.author.raw_status
-        embed.set_image(url=message.author.display_avatar)
-        embed.add_field(name="Joined on:", value=str(message.author.joined_at)[0:10], inline=False)
-        embed.add_field(name="Created on:", value=str(message.author.created_at)[0:10], inline=False)
-        embed.add_field(name="User ID:", value=str(message.author.id))
+    if message.content.startswith("!profile"):
+        #If message only contains '!profile' set user to be author
+        if len(message.content) < 9:
+            user = message.author
+        #Else, get ID from message and check for user in server
+        else:
+            id = message.content[9:]
+            if not id.isdigit():
+                await message.channel.send("Correct command format is !profile <user id>")
+                return
+            
+            user = client.get_user(int(id))
+            guild = client.get_guild(message.channel.guild.id)
+            if not guild.get_member(int(id)):
+                await message.channel.send("User not found in server")
+                return
+            
+            #If given ID is for Frogbot, send error message and return
+            if type(user) == discord.ClientUser:
+                await message.channel.send("Cannot build profile for bot.")
+                return
+            
+        #Build embed with user's information and send message
+        embed.title = user.display_name
+        embed.description = user.raw_status
+        embed.set_image(url=user.display_avatar)
+        embed.add_field(name="Joined on:", value=str(user.joined_at)[0:10], inline=False)
+        embed.add_field(name="Created on:", value=str(user.created_at)[0:10], inline=False)
+        embed.add_field(name="User ID:", value=str(user.id))
         await message.channel.send(embed=embed)
         return
     
@@ -230,14 +252,12 @@ async def on_message(message):
             await message.channel.send("Correct command format is !getpfp <user_id>")
             return
 
+        user = client.get_user(int(id))
         guild = client.get_guild(message.channel.guild.id)
-        members = await guild.fetch_members().flatten()
-        for mem in members:
-            if mem.id == int(id):
-                await message.channel.send(mem.avatar_url)
-                return
-        
-        await message.channel.send('User not found in server')
+        if not guild.get_member(int(id)):
+            await message.channel.send("User not found in server")
+            return
+        await message.channel.send(user.display_avatar)
 
     #Command for sending a random quote generated from Inspirobot website
     if message.content == "!inspire":
