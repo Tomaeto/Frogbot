@@ -3,6 +3,9 @@ import random
 import urllib3
 import giphy_client
 from giphy_client.rest import ApiException
+import sqlite3
+from sqlite3 import Error
+import configparser
 
 #Initializing Discord intents and client
 intents = discord.Intents.default()
@@ -10,20 +13,25 @@ intents.members = True
 intents.message_content = True
 client = discord.Client(intents=intents)
 
+parser = configparser.ConfigParser()
+parser.read('apidata.ini')
+
 #Initializing Giphy client instance
 api_inst = giphy_client.DefaultApi()
-config = {
-'token': 'API-TOKEN', 
+giphy_config = {
+'token': parser['Api Keys']['giphy_key'], 
 'limit': 1,
 'rating': 'r'
          }
+
+conn = sqlite3.connect("./db/bot_db.db")
 
 #Initializing sample embed
 embed = discord.Embed(title = "Sample embed", description="This is a sample embed.")
 
 #Function for getting list of frog gifs from Giphy
 def getFrogs():
-    response = api_inst.gifs_search_get(config['token'], 'frog', limit = 100, rating = 'g')
+    response = api_inst.gifs_search_get(giphy_config['token'], 'frog', limit = 100, rating = 'r')
     return list(response.data)
 
 #Function for choosing a random gif from list of frog gifs
@@ -33,11 +41,23 @@ def chooseFrog(froglist):
 
 #Function for searching for a gif using Giphy API and returning the first result
 def searchGif(term):
-    response = api_inst.gifs_search_get(config['token'], term,  limit = config['limit'], rating = config['rating'])
+    response = api_inst.gifs_search_get(giphy_config['token'], term,  limit = giphy_config['limit'], rating = giphy_config['rating'])
     gif = response.data   
     if not gif:
         return None
     return gif[0].url
+
+def getUserBanMessages(user_id):
+    sql = """ SELECT * from banned_msgs"""
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
+
+def getBanlist():
+    sql = """ Select * from banned_terms"""
+    cur = conn.cursor()
+    cur.execute(sql)
+    return cur.fetchall()
 
 #Printing message when bot is initialized
 @client.event
@@ -54,6 +74,12 @@ async def on_message(message):
     #Command for purging channel messages
     if message.content == "!purge":
         await message.channel.purge()
+        return
+    
+    if message.content == "!test":
+        messages = getUserBanMessages(message.author.id)
+        for msg in messages:
+            await message.channel.send(msg[2] + ": " + msg[1])
         return
     
     #Command for sending an embed with your account data (join date, creation date, user ID, and pfp)
@@ -117,7 +143,7 @@ async def on_message(message):
     #Command for sending a random fact from API Ninjas website
     if message.content == "!fact":
         https = urllib3.PoolManager()
-        res = https.request("GET", "https://api.api-ninjas.com/v1/facts?limit=1", headers = {"X-Api-Key": "API-KEY"})
+        res = https.request("GET", "https://api.api-ninjas.com/v1/facts?limit=1", headers = {"X-Api-Key": parser['Api Keys']['xapi_key']})
         text = str(res.data)
         text = text[13:len(text) - 4]
         text += '.'
@@ -136,4 +162,4 @@ async def on_message(message):
 
 #Setting up gif list and running bot
 froglist = getFrogs()
-client.run('BOT-TOKEN')
+client.run(parser['Api Keys']['discord_key'])
