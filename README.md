@@ -1,6 +1,8 @@
 # Frogbot
 Simple Discord Bot using Giphy API, API Ninjas, and Inspirobot API for various commands
 
+Currently adding database functionality for admin tasks such as tracking user's rule infringements (such as banned messages)
+
 Commands:
 
 !frog - sends random frog gif using Giphy API
