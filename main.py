@@ -32,6 +32,7 @@ giphy_config = {
 #Initializing connection to database
 conn = sqlite3.connect(parser['Bot Info']['path'])
 
+#Initalizing admin ID for checking in admin-only commands
 admin_id=int(parser['Bot Info']['admin_id'])
 
 #Initializing sample embed
@@ -89,6 +90,18 @@ def addBannedTerm(term):
         return e
     return    
 
+#Function for adding banned message to database and updating member's banned msg count
+def addBannedMsg(user_id, message, date):
+    sql_insert_msg = " INSERT INTO banned_msgs(user_id, msg_text, msg_date) VALUES(?,?,?);"
+    sql_update_member = " UPDATE members SET banned_msg_count = banned_msg_count + 1 WHERE id =?;"
+    try:
+        cur = conn.cursor()
+        cur.execute(sql_insert_msg, (user_id, message, date,))
+        cur.execute(sql_update_member, (user_id,))
+        conn.commit()
+    except Error as e:
+        return e
+    return
 
 '''------BOT EVENTS------'''
 #Printing message when bot is initialized and populating banned term list
@@ -104,12 +117,33 @@ async def on_ready():
 @client.event
 async def on_message(message):        
 
+    #Ignore messages from the bot
     if message.author == client.user:
         return
 
+    #Action for dealing w/ messages containing banned terms
+    #When a banned term is found, adds message to database, deletes message and informs user
+    if any([term in message.content for term in banlist]):
+        user_id = message.author.id
+        text = message.content
+        date = str(message.created_at)[0:10]
+
+        #If an error is returned, print error
+        error = addBannedMsg(user_id, text, date)
+        if error:
+            print(error)
+            return
+        
+        #If error is None, delete message and inform user of their shameful display
+        channel = message.channel
+        await message.delete()
+        await channel.send(f"<@{user_id}>, your message contained a banned term... shameful")
+        return
+    
     #Command for purging channel messages
     #Only usable by admin
     if message.content == "!purge":
+        #Ignore command if not from admin
         if (message.author.id != admin_id):
             return
         
@@ -117,12 +151,13 @@ async def on_message(message):
         return
     
     #Command for getting a user's banned messages from the database
-    #Currently in testing, only works for admin
-    if message.content == "!test":
+    #Currently in testing, only works for user
+    if message.content == "!getbans":
         messages = getUserBanMessages(message.author.id)
         for msg in messages:
             await message.channel.send(msg[0] + ": " + msg[1])
         return
+    
     
     #Command for getting list of banned terms
     if message.content == "!banlist":
@@ -135,14 +170,14 @@ async def on_message(message):
     #Called function returns error if term is already in list
     #Sends DM to admin instead of public message for security purposes
     if message.content.startswith("!addterm "):
-        #Ignore message if not from admin
+        #Ignore command if not from admin
         if (message.author.id != admin_id):
             return
         
         term = message.content[9:]
         error = addBannedTerm(term)
-        #If error is present, notify user and print error
-        if (error != None):
+        #If error is returned, notify user and print error
+        if error:
             await message.author.send("Error adding term to database, check terminal for error.")
             print(error)
             return
