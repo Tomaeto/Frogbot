@@ -6,13 +6,13 @@ Simple Discord Bot using Giphy API, API Ninjas, and Inspirobot API for various c
 **Bot uses .ini file for API keys and filepaths, NOT included in repo for security purposes**
 
 
-Commands:
+-- Basic Commands:
 
 !frog - sends random frog gif using Giphy API
 
 !search <search-term> - searches Giphy for a gif and returns first result
 
-!purge - purges messages from channel
+!banlist - sends list of banned terms from database
 
 !profile - sends embed with account data (Join date, creation date, user ID, and profile picture)
 
@@ -25,3 +25,12 @@ Commands:
 !rumia - sends gif of Rumia
 
 !kyouko - sends image of Kyouko
+
+
+
+-- Admin Commands:
+
+!purge - purges messages from channel
+
+!addterm <term> - adds given term to banned terms list in database
+
