@@ -93,10 +93,23 @@ def addBannedTerm(term):
 #Function for adding banned message to database and updating member's banned msg count
 def addBannedMsg(user_id, message, date):
     sql_insert_msg = " INSERT INTO banned_msgs(user_id, msg_text, msg_date) VALUES(?,?,?);"
-    sql_update_member = " UPDATE members SET banned_msg_count = banned_msg_count + 1 WHERE id =?;"
+    sql_update_member = " UPDATE members SET banned_msg_count = banned_msg_count + 1 WHERE id=?;"
     try:
         cur = conn.cursor()
         cur.execute(sql_insert_msg, (user_id, message, date,))
+        cur.execute(sql_update_member, (user_id,))
+        conn.commit()
+    except Error as e:
+        return e
+    return
+
+#Function for clearing user's banned messages from database and updating member's banned msg count
+def clearUserBannedMsgs(user_id):
+    sql_clear_msgs = " DELETE FROM banned_msgs WHERE user_id=?;"
+    sql_update_member = " UPDATE members SET banned_msg_count = 0 WHERE id=?"
+    try:
+        cur = conn.cursor()
+        cur.execute(sql_clear_msgs, (user_id,))
         cur.execute(sql_update_member, (user_id,))
         conn.commit()
     except Error as e:
@@ -154,6 +167,10 @@ async def on_message(message):
     #Currently in testing, only works for user
     if message.content == "!getbans":
         messages = getUserBanMessages(message.author.id)
+        if len(messages) == 0:
+            await message.channel.send("User has no banned messages.")
+            return
+        
         for msg in messages:
             await message.channel.send(msg[0] + ": " + msg[1])
         return
@@ -188,8 +205,32 @@ async def on_message(message):
         await message.author.send("Successfully added " + term + " to the banlist.")
         return
        
+    #Command for clearing a user's banned messages from the database
+    #Called function returns error if id is invalid or db connection fails
+    #Sends DM to admin for security purposes
+    if message.content.startswith("!clearuser "):
+        #Ignore command if not from admin
+        if message.author.id != admin_id:
+            return
+            
+        id = message.content[11:]
+        if not id.isdigit():
+            await message.channel.send("Correct command format is !clearuser <user id>")
+            return
+            
+        error = clearUserBannedMsgs(int(id))
+        #If error is returned, notify user and print error
+        if error:
+            await message.channel.send("Error clearing user")
+            print(error)
+            return
+        
+        #If no error, inform admin of success
+        await message.add_reaction('👍')
+        await message.author.send("Successfully cleared user's messages from database.")
+        return
+
     #Command for sending an embed with your account data (join date, creation date, user ID, and pfp)
-    #Will be reworked to allow for sending embed with other user's data
     if message.content.startswith("!profile"):
         #If message only contains '!profile' set user to be author
         if len(message.content) < 9:
