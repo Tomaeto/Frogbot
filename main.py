@@ -66,6 +66,7 @@ def getUserBanMessages(user_id):
     sql = " SELECT msg_date, msg_text FROM banned_msgs WHERE user_id=?"
     cur = conn.cursor()
     cur.execute(sql, (str(user_id),))
+    cur.close()
     return cur.fetchall()
 
 #Function for getting the list of banned terms and loading into local array
@@ -75,9 +76,11 @@ def getBanlist():
         cur = conn.cursor()
         cur.execute(sql)
     except Error as e:
-        return e;
+        return e
     for term in cur.fetchall():
         banlist.append(term[0])
+    cur.close()
+    return
 
 #Function for adding a term to the banned terms list
 def addBannedTerm(term):
@@ -86,6 +89,7 @@ def addBannedTerm(term):
         cur = conn.cursor()
         cur.execute(sql, (term,))
         conn.commit()
+        cur.close()
     except Error as e:
         return e
     return    
@@ -99,6 +103,7 @@ def addBannedMsg(user_id, message, date):
         cur.execute(sql_insert_msg, (user_id, message, date,))
         cur.execute(sql_update_member, (user_id,))
         conn.commit()
+        cur.close()
     except Error as e:
         return e
     return
@@ -112,6 +117,23 @@ def clearUserBannedMsgs(user_id):
         cur.execute(sql_clear_msgs, (user_id,))
         cur.execute(sql_update_member, (user_id,))
         conn.commit()
+        cur.close()
+    except Error as e:
+        return e
+    return
+
+#Function for adding a user to the database on join
+#Initial status is 'member' and is changed based on banned message count/ban status
+def addUsertoDB(user):
+    user_id = user.id
+    user_name = user.display_name
+    user_join_date = str(user.joined_at)[0:10]
+    sql = " INSERT INTO members (id, username, join_date, status, banned_msg_count) VALUES(?,?,?,'member', 0)"
+    try:
+        cur = conn.cursor()
+        cur.execute(sql, (user_id,user_name, user_join_date,))
+        conn.commit()
+        cur.close()
     except Error as e:
         return e
     return
@@ -125,6 +147,16 @@ async def on_ready():
         print("Error retrieving banlist")
         exit(1)
 
+#On member join, attempt to add user to database
+#Inform admin if error occurs or user is added successfully
+@client.event
+async def on_member_join(user):
+    admin = client.get_user(admin_id)
+    if addUsertoDB(user):
+        await admin.send("Failed to add " + user.display_name + " to database")
+        return 
+    await admin.send(user.display_name + " successfully added to database.")
+    return
 
 #Bot actions on message
 @client.event
